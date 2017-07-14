@@ -1,0 +1,12 @@
+In some enviroments Copy and Paste via RDP is disabled to potentially work around this
+Install RDPAddins on your Windows Machine, then from Kali/Linux use RedSnarf with the 
+file transcribe option to upload the FileTransfer.exe Binary.
+
+This should take approx 30 mins.
+
+Once the file has been typed out, save then from a command prompt
+certutil -decode filename.b64 filename.exe
+
+The way this works is RedSnarf encodes the file to base64 then simulates user input to 
+type it out to the remote machine which then allow you to decode, run the file and transfer
+files back and forth.
