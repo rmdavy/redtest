@@ -45,14 +45,14 @@ def main(argv):
 	
 	if not os.path.isfile('/opt/JohnTheRipper'):
 		os.system("apt-get install libssl-dev")
-		os.system("https://github.com/magnumripper/JohnTheRipper.git /opt/JohnTheRipper")
+		os.system("git clone https://github.com/magnumripper/JohnTheRipper.git /opt/JohnTheRipper")
 		os.chdir("/opt/JohnTheRipper/src")
 		os.system("./configure CFLAGS=\"-g -O2 -mno-avx2\"")
 		os.system("make clean && make -s")
 	
-	os.chdir("/opt/redsnarf")
-	os.system("chmod 777 /opt/redsnarf/redsnarf.py")
-	os.system("python /opt/redsnarf/redsnarf.py --auto_complete install")
+	os.chdir("/opt/redtest")
+	os.system("chmod 777 /opt/redtest/redsnarf.py")
+	os.system("python /opt/redtest/redtest.py --auto_complete install")
 		
 	print "[+]Bye"
 
