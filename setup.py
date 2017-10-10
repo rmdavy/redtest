@@ -52,7 +52,7 @@ def main(argv):
 	
 	os.chdir("/opt/redtest")
 	os.system("chmod 777 /opt/redtest/redsnarf.py")
-	os.system("python /opt/redtest/redtest.py --auto_complete install")
+	os.system("python /opt/redtest/redsnarf.py --auto_complete install")
 		
 	print "[+]Bye"
 
