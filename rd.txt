@@ -1,11 +1,11 @@
-<head>
-<script type="text/javascript">
-function conf()
-{
-var con=confirm("Do you want to submit for sure?");
-}
-</script>
-</head>
-<body>
-<form><input type="submit" onClick="conf()"/></form>
-</body>
+<html>
+   <body>
+   
+      <p>
+      This is a proof file left by ECSC to show that this folder and website is vulnerable to multiple
+      Critical Issues
+      
+      </p>
+      
+   </body>
+</html>
