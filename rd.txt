@@ -1,6 +1,6 @@
 <html>
    <body>
-      <img src="https://ecsc.co.uk/assets/img/ecsc-company-logo.svg" alt="ECSC" width="100" height="100">
-      <p><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br /><br />This website and Folder are Vulnerable to Remote File Upload</p>
+      <img src="https://raw.githubusercontent.com/rmdavy/redtest/master/ecsc_logo.png" alt="ECSC" width="100" height="100">
+      <p><br /><br />>This website and Folder are Vulnerable to Remote File Upload</p>
    </body>
 </html>
