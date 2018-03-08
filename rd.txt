@@ -1,6 +1,11 @@
 <html>
    <body>
-      <img src="https://raw.githubusercontent.com/rmdavy/redtest/master/ecsc_logo.png" alt="ECSC" >
-      <p><br /><br /><br /><br /><br /><br />This website and Folder are Vulnerable to Remote File Upload</p>
+      <script>
+         function clickAlert() {
+            alert("Alert!");
+         }
+      </script>
+
+      <input type="button" onclick="clickAlert()" value="Click-2-Alert">
    </body>
 </html>
