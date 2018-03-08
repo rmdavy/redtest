@@ -2,7 +2,7 @@
    <body>
    
       <p>
-
+      <img src="../www.rbg-update.org.uk/ecsc_logo_small.png" alt="ECSC" width="100" height="100">
       This is a proof file left by ECSC to show that this folder and website is vulnerable to multiple
       Critical Issues
       
