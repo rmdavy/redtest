@@ -1,6 +1,6 @@
 <html>
    <body>
-      <img src="https://ecsc.co.uk/assets/img/ecsc-company-logo.svg" alt="ECSC" width="500" height="377">
+      <img src="https://ecsc.co.uk/assets/img/ecsc-company-logo.svg" alt="ECSC" width="100" height="100">
       <p>This website and Folder are Vulnerable to Remote File Upload</p>
    </body>
 </html>
