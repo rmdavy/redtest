@@ -1,11 +1,11 @@
-<html>
-   <body>
-      <script>
-         function clickAlert() {
-            alert("Alert!");
-         }
-      </script>
-
-      <input type="button" onclick="clickAlert()" value="Click-2-Alert">
-   </body>
-</html>
+<head>
+<script type="text/javascript">
+function conf()
+{
+var con=confirm("Do you want to submit for sure?");
+}
+</script>
+</head>
+<body>
+<form><input type="submit" onClick="conf()"/></form>
+</body>
