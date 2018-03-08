@@ -2,7 +2,7 @@
    <body>
    
       <p>
-      <img src="https://raw.githubusercontent.com/rmdavy/redtest/master/ecsc_logo_small.png" alt="ECSC" width="50" height="50">
+      <img src="../ecsc_logo_small.png" alt="ECSC" width="50" height="50">
        <br />  <br />  <br /> 
       This is a proof file left by ECSC to show that this folder and website is vulnerable to multiple
       Critical Issues
