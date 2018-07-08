@@ -355,9 +355,10 @@ class SAMRDump:
             except Exception as e:
                 print('\n\t[!] Protocol failed: {0}'.format(e))
             else:
-                # Got a response. No need for further iterations.
-                self.__pretty_print()
-                break
+				# Got a response. No need for further iterations.
+				self.__pretty_print()
+				
+				break
 
     def __fetchList(self, rpctransport):
 		dce = DCERPC_v5(rpctransport)
@@ -410,34 +411,61 @@ class SAMRDump:
 
     def __pretty_print(self):
 
-        PASSCOMPLEX = {
-            5: 'Domain Password Complex:',
-            4: 'Domain Password No Anon Change:',
-            3: 'Domain Password No Clear Change:',
-            2: 'Domain Password Lockout Admins:',
-            1: 'Domain Password Store Cleartext:',
-            0: 'Domain Refuse Password Change:'
-        }
+		PASSCOMPLEX = {
+			5: 'Domain Password Complex:',
+			4: 'Domain Password No Anon Change:',
+			3: 'Domain Password No Clear Change:',
+			2: 'Domain Password Lockout Admins:',
+			1: 'Domain Password Store Cleartext:',
+			0: 'Domain Refuse Password Change:'
+		}
 
-        print('\n[+] Found domain(s):\n')
-        for domain in self.__domains:
-            print('\t[+] {0}'.format(domain['Name']))
+		fout=open(outputpath+targets[0]+"/password_policy.txt",'w')
 
-        print("\n[+] Password Info for Domain: {0}".format(self.__domains[0]['Name']))
+		fout.write('\n[+] DC Address:'+targets[0]+'\n')
 
-        print("\n\t[+] Minimum password length: {0}".format(self.__min_pass_len))
-        print("\t[+] Password history length: {0}".format(self.__pass_hist_len))
-        print("\t[+] Maximum password age: {0}".format(self.__max_pass_age))
-        print("\t[+] Password Complexity Flags: {0}\n".format(self.__pass_prop or "None"))
-
-        for i, a in enumerate(self.__pass_prop):
-            print("\t\t[+] {0} {1}".format(PASSCOMPLEX[i], str(a)))
-
-        print("\n\t[+] Minimum password age: {0}".format(self.__min_pass_age))
-        print("\t[+] Reset Account Lockout Counter: {0}".format(self.__rst_accnt_lock_counter))
-        print("\t[+] Locked Account Duration: {0}".format(self.__lock_accnt_dur))
-        print("\t[+] Account Lockout Threshold: {0}".format(self.__accnt_lock_thres))
-        print("\t[+] Forced Log off Time: {0}".format(self.__force_logoff_time))
+		print('\n[+] Found domain(s):\n')
+		fout.write('\n[+] Found domain(s):\n')
+		for domain in self.__domains:
+			print('\t[+] {0}'.format(domain['Name']))
+			fout.write('\n\t[+] {0}'.format(domain['Name']))
+		print("\n[+] Password Info for Domain: {0}".format(self.__domains[0]['Name']))
+		fout.write("\n\n[+] Password Info for Domain: {0}".format(self.__domains[0]['Name']))
+        
+		print("\n\t[+] Minimum password length: {0}".format(self.__min_pass_len))
+		fout.write("\n\n\t[+] Minimum password length: {0}".format(self.__min_pass_len))
+		
+		print("\t[+] Password history length: {0}".format(self.__pass_hist_len))
+		fout.write("\n\t[+] Password history length: {0}".format(self.__pass_hist_len))
+		
+		print("\t[+] Maximum password age: {0}".format(self.__max_pass_age))
+		fout.write("\n\t[+] Maximum password age: {0}".format(self.__max_pass_age))
+		
+		print("\t[+] Password Complexity Flags: {0}\n".format(self.__pass_prop or "None"))
+		fout.write("\n\t[+] Password Complexity Flags: {0}\n".format(self.__pass_prop or "None"))
+		
+		for i, a in enumerate(self.__pass_prop):
+			print("\t\t[+] {0} {1}".format(PASSCOMPLEX[i], str(a)))
+			fout.write("\n\t\t[+] {0} {1}".format(PASSCOMPLEX[i], str(a)))
+			
+		print("\n\t[+] Minimum password age: {0}".format(self.__min_pass_age))
+		fout.write("\n\n\t[+] Minimum password age: {0}".format(self.__min_pass_age))
+		
+		print("\t[+] Reset Account Lockout Counter: {0}".format(self.__rst_accnt_lock_counter))
+		fout.write("\n\t[+] Reset Account Lockout Counter: {0}".format(self.__rst_accnt_lock_counter))
+		
+		print("\t[+] Locked Account Duration: {0}".format(self.__lock_accnt_dur))
+		fout.write("\n\t[+] Locked Account Duration: {0}".format(self.__lock_accnt_dur))
+		
+		print("\t[+] Account Lockout Threshold: {0}".format(self.__accnt_lock_thres))
+		fout.write("\n\t[+] Account Lockout Threshold: {0}".format(self.__accnt_lock_thres))
+		
+		print("\t[+] Forced Log off Time: {0}".format(self.__force_logoff_time))
+		fout.write("\n\t[+] Forced Log off Time: {0}".format(self.__force_logoff_time))
+		
+		fout.close()
+		if os.path.isfile(outputpath+targets[0]+"/password_policy.txt"):
+			print colored("\n[+] Password Policy written to "+outputpath+targets[0]+"/password_policy.txt",'green')
 
 def cps(script,flag,invfunc,funccmd,chost,system):
 	try:
@@ -893,6 +921,75 @@ def enumdomusers(ip,username,password,path):
 	else:
 		print colored('[-]Looks like we were unsuccessfull extracting user names with this method','red')
 		logging.error("[-]Looks like we were unsuccessfull extracting user names with this method")
+
+#Routine gets domain usernames
+def enumdomadmins(ip,username,password,path):
+	#enumdomgroups 
+
+	#rpcclient $> enumdomgroups
+	#group:[Enterprise Read-only Domain Controllers] rid:[0x1f2]
+	#group:[Domain Admins] rid:[0x200]
+
+
+	#rpcclient $> querygroupmem 0x200
+	#	rid:[0x1f4] attr:[0x7]
+	#	rid:[0x44f] attr:[0x7]
+	#	rid:[0x450] attr:[0x7]
+
+	#rpcclient $> queryuser 0x44f
+	#	User Name   :	e.alderson
+	#	Full Name   :	Elliot Alderson
+
+	#Enumerate Domain Admins
+	
+	dom_adm_accounts = []
+	dom_adm_rids = []
+
+	if username=="":
+		proc = subprocess.Popen('pth-rpcclient '+ip+' -U \"\" -N '+' -c \"enumdomgroups\" 2>/dev/null', stdout=subprocess.PIPE,shell=True)
+	else:
+		proc = subprocess.Popen('pth-rpcclient '+ip+' -U '+username+'%'+password +' -c \"enumdomgroups\" 2>/dev/null', stdout=subprocess.PIPE,shell=True)
+	
+	stdout_value = proc.communicate()[0]
+	
+	for line in stdout_value.split('\n'):
+		if "group:[Domain Admins] rid:[" in line:
+			DomAdm_Rid=line.split("[")[2][0:-1]
+			#print DomAdm_Rid
+
+	if username=="":
+		proc = subprocess.Popen('pth-rpcclient '+ip+' -U \"\" -N '+' -c \"querygroupmem '+DomAdm_Rid+'\" 2>/dev/null', stdout=subprocess.PIPE,shell=True)
+	else:
+		proc = subprocess.Popen('pth-rpcclient '+ip+' -U '+username+'%'+password +' -c \"querygroupmem '+DomAdm_Rid+'\" 2>/dev/null', stdout=subprocess.PIPE,shell=True)
+	
+	stdout_value = proc.communicate()[0]
+
+	for line in stdout_value.split('\n'):
+		if "rid:[0x" in line:
+			dom_adm_rids.append(line.split("[")[1][0:5])
+			#print line.split("[")[1][0:5]
+
+	for rid in dom_adm_rids:
+		if username=="":
+			proc = subprocess.Popen('pth-rpcclient '+ip+' -U \"\" -N '+' -c \"queryuser '+rid+'\" 2>/dev/null', stdout=subprocess.PIPE,shell=True)
+		else:
+			proc = subprocess.Popen('pth-rpcclient '+ip+' -U '+username+'%'+password +' -c \"queryuser '+rid+'\" 2>/dev/null', stdout=subprocess.PIPE,shell=True)
+	
+		stdout_value = proc.communicate()[0]
+
+
+		#Just parse here and add to domain admin accounts array
+		for line in stdout_value.split('\n'):
+			tmpline=line.lstrip()
+			if "User Name   :" in tmpline:
+				adm_name=(tmpline.replace("User Name   :	", "").rstrip())
+				dom_adm_accounts.append(adm_name)
+
+	fout=open(path+"domain_admins.txt",'w')
+	for admins in dom_adm_accounts:
+		fout.write(admins+"\n")
+	fout.close()
+	print colored('[+]Domain Admins written to file '+path+"domain_admins.txt",'green')
 
 #Routine gets user descriptions fields
 def getdescfield(ip,username,password,path):
@@ -2070,6 +2167,9 @@ def hashparse(hashfolder,hashfile):
 
 	usedhash=[]
 	ntduplicates=[]
+	lmduplicates=[]
+
+	nt_dom_adm=[]
 
 	if file2parse!='':
 		print colored('\n[+]Parsing hashes...','yellow') 
@@ -2148,8 +2248,9 @@ def hashparse(hashfolder,hashfile):
 			with open(hashfolder+'/lm_usernames.txt') as f:
 				print colored('[+]'+str(sum(1 for _ in f))+' LM usernames written to '+hashfolder+'/lm_usernames.txt\n','red') 
 
-		#Find Duplicate Hashes - Password Sharing Across Accounts
-
+		##########################################################
+		#Find Duplicate Hashes - Password Sharing Across Accounts#
+		##########################################################
 		#Check that our NT file exists
 		if os.path.isfile(hashfolder+'/nt.txt'):
 			#Open NT file
@@ -2172,26 +2273,51 @@ def hashparse(hashfolder,hashfile):
 						for z in xrange(0,len(hash_list)):
 							if hash_list[y].split(":")[3]==hash_list[z].split(":")[3]:
 								if hash_list[y].split(":")[0]!=hash_list[z].split(":")[0]:
-
-									#print hash_list[y].split(":")[0]+" hash same as " +hash_list[z].split(":")[0]
-									ntduplicates.append(hash_list[y].split(":")[0]+" hash same as " +hash_list[z].split(":")[0])
+									#Build hash match string
+									ntduplicates.append("Hash Match:"+hash_list[y].split(":")[0]+":" +hash_list[z].split(":")[0])
 									#Add previous found hash to dirty list
 									usedhash.append(hash_list[y].split(":")[3])
-
 						set(usedhash)
 
-			#Write duplicates to file.
-			fout=open(hashfolder+'/ntduplicates.txt','w')
-			for dup in ntduplicates:
-				fout.write(dup+'\n')
-			fout.close()
+			#Test Function to replace DA username with username[ADM]
+			#Check for file containing list of DA names
+			if os.path.isfile(hashfolder+'/domain_admins.txt'):
+				#Display msg that DA list found
+				print colored('[+] Domain Admin List Found '+hashfolder+'/domain_admins.txt','green') 
+				print colored('[+] Checking NT hashes for password and DA password reuse ','yellow') 
+				#Open list of DA names
+				with open(hashfolder+'/domain_admins.txt','r') as inifile:
+					#Read in data
+					data=inifile.read()
+					#split lines
+					dom_adms=data.splitlines()
+					#loop through list of hashes
+					for name in xrange(0,len(ntduplicates)):
+						#Loop through list of DA's
+						for adm in dom_adms:
+							#Check to see if DA is found in hash list
+							if adm.lstrip().rstrip() in ntduplicates[name].lstrip().rstrip() :
+								#Append [ADM] to any DA account usernames
+								ntduplicates[name]=ntduplicates[name].replace(adm,adm+"[ADM]")
 
-			if os.path.isfile(hashfolder+'/ntduplicates.txt'):
-				print colored('[+] NT Hash Reuse usernames written to '+hashfolder+'/ntduplicates.txt\n','blue') 
+			#Check to see if we have any hash duplicates - check array length
+			if len(ntduplicates)>0:
+				#Write duplicates to file.
+				fout=open(hashfolder+'/ntduplicates.txt','w')
+				for dup in ntduplicates:
+					fout.write(dup+'\n')
+				fout.close()
+				#Check to see if ntduplicates file has been written and display messages
+				if os.path.isfile(hashfolder+'/ntduplicates.txt'):
+					print colored('[+] NT Hash Reuse usernames written to '+hashfolder+'/ntduplicates.txt','blue')
+					print colored('[+] TIP try grep --color=\'auto\' -w \"ADM\" '+ hashfolder+'/ntduplicates.txt\n','yellow')
+			else:
+				print colored('[+] No duplicates found\n','yellow')
 
-		#Check that our NT file exists
+		#Repeat of above for LM hashes - TODO - Convert into function
+		#Check that our LM file exists
 		if os.path.isfile(hashfolder+'/lm.txt'):
-			#Open NT file
+			#Open LM file
 			with open(hashfolder+'/lm.txt','r') as inifile:
 				#Read in data
 				data=inifile.read()
@@ -2212,21 +2338,41 @@ def hashparse(hashfolder,hashfile):
 							if hash_list[y].split(":")[2]==hash_list[z].split(":")[2]:
 								if hash_list[y].split(":")[0]!=hash_list[z].split(":")[0]:
 
-									#print hash_list[y].split(":")[0]+" hash same as " +hash_list[z].split(":")[0]
-									ntduplicates.append(hash_list[y].split(":")[0]+" hash same as " +hash_list[z].split(":")[0])
+									lmduplicates.append("Hash Match:"+hash_list[y].split(":")[0]+":" +hash_list[z].split(":")[0])
 									#Add previous found hash to dirty list
 									usedhash.append(hash_list[y].split(":")[2])
 
 						set(usedhash)
 
-			#Write duplicates to file.
-			fout=open(hashfolder+'/lmduplicates.txt','w')
-			for dup in ntduplicates:
-				fout.write(dup+'\n')
-			fout.close()
+			#Test Function to replace DA username with username[ADM]
+			if os.path.isfile(hashfolder+'/domain_admins.txt'):
+				print colored('[+] Domain Admin List Found '+hashfolder+'/domain_admins.txt','green') 
+				print colored('[+] Checking LM hashes for password and DA password reuse ','yellow') 
+				
+				with open(hashfolder+'/domain_admins.txt','r') as inifile:
+				#Read in data
+					data=inifile.read()
+				#split lines
+					dom_adms=data.splitlines()
 
-			if os.path.isfile(hashfolder+'/lmduplicates.txt'):
-				print colored('[+] LM Hash Reuse usernames written to '+hashfolder+'/lmduplicates.txt\n','blue') 
+					for name in xrange(0,len(lmduplicates)):
+						for adm in dom_adms:
+							if adm.lstrip().rstrip() in lmduplicates[name].lstrip().rstrip() :
+								#Code here
+								lmduplicates[name]=lmduplicates[name].replace(adm,adm+"[ADM]")
+
+			if len(lmduplicates)>0:
+				#Write duplicates to file.
+				fout=open(hashfolder+'/lmduplicates.txt','w')
+				for dup in lmduplicates:
+					fout.write(dup+'\n')
+				fout.close()
+
+				if os.path.isfile(hashfolder+'/lmduplicates.txt'):
+					print colored('[+] LM Hash Reuse usernames written to '+hashfolder+'/lmduplicates.txt','blue') 
+					print colored('[+] TIP try grep --color=\'auto\' -w \"ADM\" '+ hashfolder+'/lmduplicates.txt\n','yellow')
+			else:
+				print colored('[+] No duplicates found\n','yellow')
 
 #Routine gets the enabled/disabled status of a user
 def userstatus(targetpath,dcip,inputfile,dom_name):
@@ -2699,7 +2845,7 @@ def main():
 
 #Display the user menu.
 banner()
-p = argparse.ArgumentParser("./redsnarf -H ip=192.168.0.1 -u administrator -p Password1", version="RedSnarf Version 0.6c", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=20,width=150),description = "Offers a rich set of features to help Pentest Servers and Workstations")
+p = argparse.ArgumentParser("./redsnarf -H ip=192.168.0.1 -u administrator -p Password1", version="RedSnarf Version 0.6d", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=20,width=150),description = "Offers a rich set of features to help Pentest Servers and Workstations")
 
 # Creds
 p.add_argument("-H", "--host", dest="host", help="Specify a hostname -H ip= / range -H range= / targets file -H file= to grab hashes from")
@@ -4330,7 +4476,7 @@ if password_policy in yesanswers:
 			print colored("[+]Retrieving password policy",'green')
 			dumper.dump(targets[0])
 			print '\n\n'
-
+			
 			sys.exit()
 			
 		except OSError:
@@ -5470,6 +5616,7 @@ if user_desc in yesanswers:
 			print colored("[+]Attempting to gather AD Description information using RPC",'green')
 			
 			enumdomusers(targets[0],user,passw,outputpath+targets[0]+"/")
+			enumdomadmins(targets[0],user,passw,outputpath+targets[0]+"/")
 			getdescfield(targets[0],user,passw,outputpath+targets[0]+"/")
 
 			sys.exit()
