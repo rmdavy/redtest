@@ -2434,14 +2434,17 @@ def userstatus(targetpath,dcip,inputfile,dom_name):
 										fout.write(mark+'\n')
 										fout.close()
 			
-
+	#Print number of enabled user accounts
 	if os.path.isfile(targetpath+str(dcip)+'/'+'enabled_'+inputfile):
 		with open(targetpath+str(dcip)+'/'+'enabled_'+inputfile) as f:
 			print colored("[+]"+str(sum(1 for _ in f))+" enabled accounts written to "+targetpath+str(dcip)+'/'+'enabled_'+inputfile,'green')
-
+	#Print number of disabled user accounts
 	if os.path.isfile(targetpath+str(dcip)+'/'+'disabled_'+inputfile):
 		with open(targetpath+str(dcip)+'/'+'disabled_'+inputfile) as f:
 			print colored("[+]"+str(sum(1 for _ in f))+" disabled accounts written to "+targetpath+str(dcip)+'/'+'disabled_'+inputfile,'green')
+	#If print no accounts available if the above cases are not met
+	if not os.path.isfile(targetpath+str(dcip)+'/'+'enabled_'+inputfile) and not os.path.isfile(targetpath+str(dcip)+'/'+'disabled_'+inputfile):
+		print "No Accounts Available\n"
 
 #Function handles file upload
 def upload(s,path,command):
@@ -2912,6 +2915,7 @@ hgroup.add_argument("-hW", "--win_scp", dest="win_scp", default="n", help="<Opti
 egroup = p.add_argument_group('Enumeration related')
 egroup.add_argument("-eA", "--service_accounts", dest="service_accounts", default="n", help="<Optional> Enum service accounts, if any")
 egroup.add_argument("-eAS", "--arp_spoof", dest="arp_spoof", default="n", help="<Optional> ARP Spoof with Ettercap")
+egroup.add_argument("-eE", "--user_enum", dest="user_enum", default="n", help="<Optional> Enumerate Domain Users and Domain Admins")
 egroup.add_argument("-eD", "--user_desc", dest="user_desc", default="n", help="<Optional> Save AD User Description Field to file, check for password")
 egroup.add_argument("-eL", "--find_user", dest="find_user", default="n", help="<Optional> Find user - Live")
 egroup.add_argument("-eO", "--ofind_user", dest="ofind_user", default="n", help="<Optional> Find user - Offline")
@@ -2984,6 +2988,7 @@ edq_SingleSessionPerUser=args.edq_SingleSessionPerUser
 screenshot=args.screenshot
 unattend=args.unattend
 user_desc=args.user_desc
+user_enum=args.user_enum
 recorddesktop=args.recorddesktop
 empire_launcher=args.empire_launcher
 mssqlshell=args.mssqlshell
@@ -5626,6 +5631,31 @@ if user_desc in yesanswers:
 	else:
 		print colored ('\n[-]It is only possible to use this function on a single target and not a range','red')
 		sys.exit()
+
+#Routine will output a list of domain users and domain admins
+if user_enum in yesanswers:
+	if len(targets)==1:
+		try:
+			#Check that we're running this against a DC
+			checkport()
+			
+			if not os.path.isdir(outputpath+targets[0]):
+				os.makedirs(outputpath+targets[0])
+				print colored("[+]Creating directory for host: "+outputpath+targets[0],'green')
+			else:
+				print colored("[+]Found directory for : "+outputpath+targets[0],'yellow')
+			
+			enumdomusers(targets[0],user,passw,outputpath+targets[0]+"/")
+			enumdomadmins(targets[0],user,passw,outputpath+targets[0]+"/")
+
+			sys.exit()
+
+		except:
+			sys.exit()
+	else:
+		print colored ('\n[-]It is only possible to use this function on a single target and not a range','red')
+		sys.exit()
+
 
 #This enumerates accounts running services, we get the basics of this during normal enumeration however this function gets group memberships
 if service_accounts !='n':
