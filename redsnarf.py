@@ -2312,7 +2312,7 @@ def hashparse(hashfolder,hashfile):
 					print colored('[+] NT Hash Reuse usernames written to '+hashfolder+'/ntduplicates.txt','blue')
 					print colored('[+] TIP try grep --color=\'auto\' -w \"ADM\" '+ hashfolder+'/ntduplicates.txt\n','yellow')
 			else:
-				print colored('[+] No duplicates found\n','yellow')
+				print colored('[+] No NT duplicate hashes found\n','green')
 
 		#Repeat of above for LM hashes - TODO - Convert into function
 		#Check that our LM file exists
@@ -2372,7 +2372,7 @@ def hashparse(hashfolder,hashfile):
 					print colored('[+] LM Hash Reuse usernames written to '+hashfolder+'/lmduplicates.txt','blue') 
 					print colored('[+] TIP try grep --color=\'auto\' -w \"ADM\" '+ hashfolder+'/lmduplicates.txt\n','yellow')
 			else:
-				print colored('[+] No duplicates found\n','yellow')
+				print colored('[+] No LM duplicate hashes found\n','green')
 
 #Routine gets the enabled/disabled status of a user
 def userstatus(targetpath,dcip,inputfile,dom_name):
