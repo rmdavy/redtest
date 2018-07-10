@@ -2189,7 +2189,8 @@ def run():
 			dialect = smbClient.getDialect()
 			if dialect == SMB_DIALECT:
 				print colored("[!]WARNING - SMBv1 Accepted",'red')
-				smbClient.logoff()
+				#Commenting out the line below fixes the Connection Reset By Peer Issue
+				#smbClient.logoff()
 
 			#Initiate Proper Connection here
 			smbClient = SMBConnection(host, host, sess_port=int('445'),timeout=10) 
@@ -3057,7 +3058,7 @@ def main():
 
 #Display the user menu.
 banner()
-p = argparse.ArgumentParser("./redsnarf -H ip=192.168.0.1 -u administrator -p Password1", version="RedSnarf Version 0.6d", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=20,width=150),description = "Offers a rich set of features to help Pentest Servers and Workstations")
+p = argparse.ArgumentParser("./redsnarf -H ip=192.168.0.1 -u administrator -p Password1", version="RedSnarf Version 0.6e", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=20,width=150),description = "Offers a rich set of features to help Pentest Servers and Workstations")
 
 # Creds
 p.add_argument("-H", "--host", dest="host", help="Specify a hostname -H ip= / range -H range= / targets file -H file= to grab hashes from")
