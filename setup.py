@@ -26,6 +26,7 @@ def main(argv):
 	os.system("pip install docopt")
 	os.system("pip install pyuserinput")
 	os.system("pip install wget")
+	os.system("pip install pywinrm")
 	
 	if not os.path.isfile('/opt/python-libnmap/setup.py'):
 		os.system("git clone https://github.com/savon-noir/python-libnmap.git /opt/python-libnmap")
