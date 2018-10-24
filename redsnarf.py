@@ -2374,6 +2374,8 @@ def hashparse(hashfolder,hashfile):
 	lst_lmhash=[]
 	lst_lmuser=[]
 
+	totalhashes=""
+
 	usedhash=[]
 	ntduplicates=[]
 	lmduplicates=[]
@@ -2457,132 +2459,8 @@ def hashparse(hashfolder,hashfile):
 			with open(hashfolder+'/lm_usernames.txt') as f:
 				print colored('[+]'+str(sum(1 for _ in f))+' LM usernames written to '+hashfolder+'/lm_usernames.txt\n','red') 
 
-		##########################################################
-		#Find Duplicate Hashes - Password Sharing Across Accounts#
-		##########################################################
-		#Check that our NT file exists
-		if os.path.isfile(hashfolder+'/nt.txt'):
-			#Open NT file
-			with open(hashfolder+'/nt.txt','r') as inifile:
-				#Read in data
-				data=inifile.read()
-				#split lines
-				hash_list=data.splitlines()
-				#loop throught all hashes
-				for y in xrange(0,len(hash_list)):
-					#Check to see if hash already exists in dirty hash list
-					try:
-						value_index = usedhash.index(hash_list[y].split(":")[3])
-					except:
-						value_index = -1
-
-					#If it doesn't exist then proceed
-					if value_index == -1:
-
-						for z in xrange(0,len(hash_list)):
-							if hash_list[y].split(":")[3]==hash_list[z].split(":")[3]:
-								if hash_list[y].split(":")[0]!=hash_list[z].split(":")[0]:
-									#Build hash match string
-									ntduplicates.append("Hash Match:"+hash_list[y].split(":")[0]+":" +hash_list[z].split(":")[0])
-									
-									#Add previous found hash to dirty list
-									usedhash.append(hash_list[y].split(":")[3])
-						set(usedhash)
-
-			#Test Function to replace DA username with username[ADM]
-			#Check for file containing list of DA names
-			if os.path.isfile(hashfolder+'/domain_admins.txt'):
-				#Display msg that DA list found
-				print colored('[+] Domain Admin List Found '+hashfolder+'/domain_admins.txt','green') 
-				print colored('[+] Checking NT hashes for password and DA password reuse ','yellow') 
-				#Open list of DA names
-				with open(hashfolder+'/domain_admins.txt','r') as inifile:
-					#Read in data
-					data=inifile.read()
-					#split lines
-					dom_adms=data.splitlines()
-					#loop through list of hashes
-					for name in xrange(0,len(ntduplicates)):
-						#Loop through list of DA's
-						for adm in dom_adms:
-							#Check to see if DA is found in hash list
-							if adm.lstrip().rstrip() in ntduplicates[name].lstrip().rstrip() :
-								#Append [ADM] to any DA account usernames
-								ntduplicates[name]=ntduplicates[name].replace(adm,adm+"[ADM]")
-
-			#Check to see if we have any hash duplicates - check array length
-			if len(ntduplicates)>0:
-				#Write duplicates to file.
-				fout=open(hashfolder+'/ntduplicates.txt','w')
-				for dup in ntduplicates:
-					fout.write(dup+'\n')
-				fout.close()
-				#Check to see if ntduplicates file has been written and display messages
-				if os.path.isfile(hashfolder+'/ntduplicates.txt'):
-					print colored('[+] NT Hash Reuse usernames written to '+hashfolder+'/ntduplicates.txt','blue')
-					print colored('[+] TIP try grep --color=\'auto\' -w \"ADM\" '+ hashfolder+'/ntduplicates.txt\n','yellow')
-			else:
-				print colored('[+] No NT duplicate hashes found\n','green')
-
-		#Repeat of above for LM hashes - TODO - Convert into function
-		#Check that our LM file exists
-		if os.path.isfile(hashfolder+'/lm.txt'):
-			#Open LM file
-			with open(hashfolder+'/lm.txt','r') as inifile:
-				#Read in data
-				data=inifile.read()
-				#split lines
-				hash_list=data.splitlines()
-				#loop throught all hashes
-				for y in xrange(0,len(hash_list)):
-					#Check to see if hash already exists in dirty hash list
-					try:
-						value_index = usedhash.index(hash_list[y].split(":")[2])
-					except:
-						value_index = -1
-
-					#If it doesn't exist then proceed
-					if value_index == -1:
-
-						for z in xrange(0,len(hash_list)):
-							if hash_list[y].split(":")[2]==hash_list[z].split(":")[2]:
-								if hash_list[y].split(":")[0]!=hash_list[z].split(":")[0]:
-
-									lmduplicates.append("Hash Match:"+hash_list[y].split(":")[0]+":" +hash_list[z].split(":")[0])
-									#Add previous found hash to dirty list
-									usedhash.append(hash_list[y].split(":")[2])
-
-						set(usedhash)
-
-			#Test Function to replace DA username with username[ADM]
-			if os.path.isfile(hashfolder+'/domain_admins.txt'):
-				print colored('[+] Domain Admin List Found '+hashfolder+'/domain_admins.txt','green') 
-				print colored('[+] Checking LM hashes for password and DA password reuse ','yellow') 
-				
-				with open(hashfolder+'/domain_admins.txt','r') as inifile:
-				#Read in data
-					data=inifile.read()
-				#split lines
-					dom_adms=data.splitlines()
-
-					for name in xrange(0,len(lmduplicates)):
-						for adm in dom_adms:
-							if adm.lstrip().rstrip() in lmduplicates[name].lstrip().rstrip() :
-								#Code here
-								lmduplicates[name]=lmduplicates[name].replace(adm,adm+"[ADM]")
-
-			if len(lmduplicates)>0:
-				#Write duplicates to file.
-				fout=open(hashfolder+'/lmduplicates.txt','w')
-				for dup in lmduplicates:
-					fout.write(dup+'\n')
-				fout.close()
-
-				if os.path.isfile(hashfolder+'/lmduplicates.txt'):
-					print colored('[+] LM Hash Reuse usernames written to '+hashfolder+'/lmduplicates.txt','blue') 
-					print colored('[+] TIP try grep --color=\'auto\' -w \"ADM\" '+ hashfolder+'/lmduplicates.txt\n','yellow')
-			else:
-				print colored('[+] No LM duplicate hashes found\n','green')
+		totalhashes=str(len(lst_lmhash)+len(lst_nthash))
+		print colored('[+]Total Hashes '+str(totalhashes),'green')
 
 #Routine gets the enabled/disabled status of a user
 def userstatus(targetpath,dcip,inputfile,dom_name):
@@ -3058,7 +2936,7 @@ def main():
 
 #Display the user menu.
 banner()
-p = argparse.ArgumentParser("./redsnarf -H ip=192.168.0.1 -u administrator -p Password1", version="RedSnarf Version 0.6e", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=20,width=150),description = "Offers a rich set of features to help Pentest Servers and Workstations")
+p = argparse.ArgumentParser("./redsnarf -H ip=192.168.0.1 -u administrator -p Password1", version="RedSnarf Version 0.6f", formatter_class=lambda prog: argparse.HelpFormatter(prog,max_help_position=20,width=150),description = "Offers a rich set of features to help Pentest Servers and Workstations")
 
 # Creds
 p.add_argument("-H", "--host", dest="host", help="Specify a hostname -H ip= / range -H range= / targets file -H file= to grab hashes from")
